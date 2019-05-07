@@ -1,0 +1,1317 @@
+Index: app/src/main/java/com/example/sydney/psov3/Cashier.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/java/com/example/sydney/psov3/Cashier.java	(date 1500346611000)
++++ app/src/main/java/com/example/sydney/psov3/Cashier.java	(date 1500448342000)
+@@ -21,6 +21,7 @@
+ import android.text.Editable;
+ import android.text.InputType;
+ import android.text.TextWatcher;
++import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.Menu;
+ import android.view.MenuInflater;
+@@ -51,13 +52,13 @@
+ import java.util.Date;
+ import java.util.List;
+ import java.util.Locale;
+-
+ import static com.example.sydney.psov3.Constants.*;
+ 
+ public class Cashier extends AppCompatActivity {
+     ArrayList<String> itemCode123 = new ArrayList<>();
+     ArrayList<String> itemQuan123 = new ArrayList<>();
+-    private int quantityCount = 0,itemcodeCol,discType=0,code,dialogVar;
++    private int quantityCount = 0,itemcodeCol,discType=0,dialogVar;
++    private long code=0;
+     String userNum;
+     double vattable,vat,subTotal,itempriceCol,itempricetotalCol,discount=0.0,discounted,totalPrice;
+     Double due,payment;
+@@ -99,14 +100,10 @@
+     ReportBaKamo reportBaKamo;
+ 
+ 
+-    //JOLLIMARK VARIABLES
++    //JMPRINTER VARIABLES
++//    private JmPrinter mPrinter;
+ //    private UsbPrinter marksPrinter = new UsbPrinter();
+ 
+-
+-    //JMPRINTER VARIABLES
+-    private JmPrinter mPrinter;
+-    private UsbPrinter marksPrinter = new UsbPrinter();
+-
+     private String customerCash;
+     private double dCustomerCash,change;
+ 
+@@ -158,7 +155,7 @@
+         setContentView(R.layout.activity_cashier);
+         init(); //INITALIZATION OF VIEWS
+ 
+-        mPrinter = new JmPrinter();           //Create a 78M printer object
++//        mPrinter = new JmPrinter();           //Create a 78M printer object
+ 
+         Intent intent = getIntent();
+         userNum = intent.getExtras().getString("CashNum");
+@@ -412,19 +409,15 @@
+ 
+             @Override
+             public void afterTextChanged(Editable editable) {
+-                int mCode = txt_search.getText().length();
+-                if(mCode >= 8){
++                long mCode = txt_search.getText().length();
++                if(mCode >= 13){
+                     searchProduct();
+                 }
+             }
+         });
+ 
+-        createMyDialog();
+-        //CREATE DIALOG Z
+-        alertDialogXreport = builder.create();
+-        alertDialogZreport = builder.create();
+-        alertDialogCredit = builder.create();
+ 
++
+     }
+ 
+     private void createMyDialog() {
+@@ -434,118 +427,126 @@
+         final EditText reportTotalCashDrawerX,reportTotalCashDrawerZ;
+         final Button btnSubmitX,btnCancelX,btnSubmitZ,btnCancelZ;
+ 
++        if(whatButton.equals("x")){
++            Log.e("X eto : ", "X GUMANA");
+-        final View alertLayoutXreport = inflater.inflate(R.layout.custom_alertdialog_xreport,null);
++            final View alertLayoutXreport = inflater.inflate(R.layout.custom_alertdialog_xreport,null);
+-        final View alertLayoutZreport = inflater.inflate(R.layout.custom_alertdialog_zreport,null);
+-
+-        builder.setView(alertLayoutXreport);
++            builder.setView(alertLayoutXreport);
+-        builder.setView(alertLayoutZreport);
+ 
+-        reportTotalCashDrawerX = (EditText) alertLayoutXreport.findViewById(R.id.etTotalCashDrawerX);
+-        btnSubmitX = (Button) alertLayoutXreport.findViewById(R.id.btnCashDrawerSubmitX);
+-        btnCancelX = (Button) alertLayoutXreport.findViewById(R.id.btnCashDrawerCancelX);
++            reportTotalCashDrawerX = (EditText) alertLayoutXreport.findViewById(R.id.etTotalCashDrawerX);
++            btnSubmitX = (Button) alertLayoutXreport.findViewById(R.id.btnCashDrawerSubmitX);
++            btnCancelX = (Button) alertLayoutXreport.findViewById(R.id.btnCashDrawerCancelX);
+ 
+-        reportTotalCashDrawerZ = (EditText) alertLayoutXreport.findViewById(R.id.etTotalCashDrawerZ);
+-        btnSubmitZ = (Button) alertLayoutXreport.findViewById(R.id.btnCashDrawerSubmitZ);
+-        btnCancelZ= (Button) alertLayoutXreport.findViewById(R.id.btnCashDrawerCancelZ);
+-
+-        String[] itemID = new String[]{_ID, COLUMN_TRANSACTION_TYPE};
+-        Cursor cursor1 = dbReader.query(TABLE_TRANSACTION, itemID, null, null, null, null, null);
+-        cursor1.moveToLast();
+-        transNumber = cursor1.getInt(0); //COLUMN _ID of TABLE_TRANSACTION
+-        cursor1.close();
+-
+-        btnSubmitX.setOnClickListener(new View.OnClickListener() {
+-            @Override
+-            public void onClick(View view) {
+-                String convertedTransNum = Integer.toString(transNumber);
+-                double cashSale = db_data.getCashSales(userNum);
+-                double enteredCashDrawer = Double.parseDouble(reportTotalCashDrawerX.getText().toString().trim());
+-                double cashShortOver = enteredCashDrawer - cashSale;
+-                db_data.addXreport(convertedTransNum,cashSale,enteredCashDrawer,cashShortOver);
++            btnSubmitX.setOnClickListener(new View.OnClickListener() {
++                @Override
++                public void onClick(View view) {
++                    String convertedTransNum = Integer.toString(transNumber);
++                    double cashSale = db_data.getCashSales(userNum);
++                    double enteredCashDrawer = Double.parseDouble(reportTotalCashDrawerX.getText().toString().trim());
++                    double cashShortOver = enteredCashDrawer - cashSale;
++                    db_data.addXreport(convertedTransNum,cashSale,enteredCashDrawer,cashShortOver);
+ 
+-                //FOR SAVING X REPORT
+-                reportBaKamo.setDb_data(db_data);
+-                try{
+-                    transType = "xreport";
+-                    Date currDate = new Date();
+-                    final SimpleDateFormat dateTimeFormat = new SimpleDateFormat("MMM-dd-yyyy hh:mm a");
+-                    String dateToStr = dateTimeFormat.format(currDate);
+-                    Date strToDate = dateTimeFormat.parse(dateToStr);
+-                    int bcd;
+-                    String dateToString = strToDate.toString();
+-                    db_data.addTransaction(transType,dateToString,userNum,0,0);
+-                    String[] itemID = new String[]{_ID, COLUMN_TRANSACTION_TYPE};
+-                    Cursor cursor1 = dbReader.query(TABLE_TRANSACTION, itemID, null, null, null, null, null);
+-                    cursor1.moveToLast();
+-                    bcd = cursor1.getInt(0); //COLUMN _ID of TABLE_TRANSACTION
+-                    cursor1.close();
++                    //FOR SAVING X REPORT
++                    reportBaKamo.setDb_data(db_data);
++                    try{
++                        transType = "xreport";
++                        Date currDate = new Date();
++                        final SimpleDateFormat dateTimeFormat = new SimpleDateFormat("MMM-dd-yyyy hh:mm a");
++                        String dateToStr = dateTimeFormat.format(currDate);
++                        Date strToDate = dateTimeFormat.parse(dateToStr);
++                        int bcd;
++                        String dateToString = strToDate.toString();
++                        db_data.addTransaction(transType,dateToString,userNum,0,0);
++                        String[] itemID = new String[]{_ID, COLUMN_TRANSACTION_TYPE};
++                        Cursor cursor1 = dbReader.query(TABLE_TRANSACTION, itemID, null, null, null, null, null);
++                        cursor1.moveToLast();
++                        bcd = cursor1.getInt(0); //COLUMN _ID of TABLE_TRANSACTION
++                        cursor1.close();
+ 
+-                    reportBaKamo.setDb_data(db_data);
++                        reportBaKamo.setDb_data(db_data);
+ 
+-                    reportBaKamo.main(userNum,dateToString,bcd);
+-                }
+-                catch(Exception e){
+-                    e.printStackTrace();
+-                }
+-            }
+-        });
++                        reportBaKamo.main(userNum,dateToString,bcd);
++                    }
++                    catch(Exception e){
++                        e.printStackTrace();
++                    }
++                }
++            });
+ 
++            btnCancelX.setOnClickListener(new View.OnClickListener() {
++                @Override
++                public void onClick(View view) {
++                    alertDialogXreport.dismiss();
++                }
++            });
++        }
++         else if(whatButton.equals("z")){
++            Log.e("Z eto : ", "Z GUMANA");
++            final View alertLayoutZreport = inflater.inflate(R.layout.custom_alertdialog_zreport,null);
++            builder.setView(alertLayoutZreport);
++
++            reportTotalCashDrawerZ = (EditText) alertLayoutZreport.findViewById(R.id.etTotalCashDrawerZ);
++            btnSubmitZ = (Button) alertLayoutZreport.findViewById(R.id.btnCashDrawerSubmitZ);
++            btnCancelZ= (Button) alertLayoutZreport.findViewById(R.id.btnCashDrawerCancelZ);
++
+-        btnSubmitZ.setOnClickListener(new View.OnClickListener() {
+-            @Override
+-            public void onClick(View view) {
+-                String convertedTransNum = Integer.toString(transNumber);
+-                double cashSale = db_data.getCashSales(userNum);
+-                double enteredCashDrawer = Double.parseDouble(reportTotalCashDrawerZ.getText().toString().trim());
+-                double cashShortOver = enteredCashDrawer - cashSale;
+-                db_data.addXreport(convertedTransNum,cashSale,enteredCashDrawer,cashShortOver);
++            btnSubmitZ.setOnClickListener(new View.OnClickListener() {
++                @Override
++                public void onClick(View view) {
++                    String convertedTransNum = Integer.toString(transNumber);
++                    double cashSale = db_data.getCashSales(userNum);
++                    double enteredCashDrawer = Double.parseDouble(reportTotalCashDrawerZ.getText().toString().trim());
++                    double cashShortOver = enteredCashDrawer - cashSale;
++                    db_data.addXreport(convertedTransNum,cashSale,enteredCashDrawer,cashShortOver);
+ 
+-                //FOR SAVING Z REPORT
+-                try{
+-                    transType = "zreport";
+-                    Date currDate = new Date();
+-                    final SimpleDateFormat dateTimeFormat = new SimpleDateFormat("MMM-dd-yyyy hh:mm a");
+-                    String dateToStr = dateTimeFormat.format(currDate);
+-                    Date strToDate = dateTimeFormat.parse(dateToStr);
+-                    int bcd;
+-                    String dateToString = strToDate.toString();
+-                    db_data.addTransaction(transType,dateToString,userNum,0,0);
+-                    String[] itemID = new String[]{_ID, COLUMN_TRANSACTION_TYPE};
+-                    Cursor cursor1 = dbReader.query(TABLE_TRANSACTION, itemID, null, null, null, null, null);
+-                    cursor1.moveToLast();
+-                    bcd = cursor1.getInt(0); //COLUMN _ID of TABLE_TRANSACTION
+-                    cursor1.close();
++                    //FOR SAVING Z REPORT
++                    try{
++                        transType = "zreport";
++                        Date currDate = new Date();
++                        final SimpleDateFormat dateTimeFormat = new SimpleDateFormat("MMM-dd-yyyy hh:mm a");
++                        String dateToStr = dateTimeFormat.format(currDate);
++                        Date strToDate = dateTimeFormat.parse(dateToStr);
++                        int bcd;
++                        String dateToString = strToDate.toString();
++                        db_data.addTransaction(transType,dateToString,userNum,0,0);
++                        String[] itemID = new String[]{_ID, COLUMN_TRANSACTION_TYPE};
++                        Cursor cursor1 = dbReader.query(TABLE_TRANSACTION, itemID, null, null, null, null, null);
++                        cursor1.moveToLast();
++                        bcd = cursor1.getInt(0); //COLUMN _ID of TABLE_TRANSACTION
++                        cursor1.close();
+ 
+-                    reportBaKamo.setDb_data(db_data);
+-                    reportBaKamo.main("no",dateToString,bcd);
+-                    ArrayList<String> paPrintNaman = new ArrayList<>();
+-                    paPrintNaman = reportBaKamo.getToBePrinted();
+-                    paPrintNaman.add("yownOH");
+-                    unLockCashBox();
+-                    printFunction(paPrintNaman);
+-                    paPrintNaman.clear();
+-                }
+-                catch(Exception e){
+-                    e.printStackTrace();
+-                }
+-            }
+-        });
++                        reportBaKamo.setDb_data(db_data);
++                        reportBaKamo.main("no",dateToString,bcd);
++                        ArrayList<String> paPrintNaman = new ArrayList<>();
++                        paPrintNaman = reportBaKamo.getToBePrinted();
++                        paPrintNaman.add("yownOH");
++                        unLockCashBox();
++                        printFunction(paPrintNaman);
++                        paPrintNaman.clear();
++                    }
++                    catch(Exception e){
++                        e.printStackTrace();
++                    }
++                }
++            });
+ 
+-
+-        btnCancelX.setOnClickListener(new View.OnClickListener() {
+-            @Override
+-            public void onClick(View view) {
+-                alertDialogXreport.dismiss();
+-            }
+-        });
+-
+-        btnCancelZ.setOnClickListener(new View.OnClickListener() {
+-            @Override
+-            public void onClick(View view) {
+-                alertDialogZreport.dismiss();
+-            }
+-        });
+-    }
++            btnCancelZ.setOnClickListener(new View.OnClickListener() {
++                @Override
++                public void onClick(View view) {
++                    alertDialogZreport.dismiss();
++                }
++            });
++        }
+ 
++
++
++        String[] itemID = new String[]{_ID, COLUMN_TRANSACTION_TYPE};
++        Cursor cursor1 = dbReader.query(TABLE_TRANSACTION, itemID, null, null, null, null, null);
++        cursor1.moveToLast();
++        transNumber = cursor1.getInt(0); //COLUMN _ID of TABLE_TRANSACTION
++        cursor1.close();
++
++
++    }
++
+     private List<InvoiceItem> fill_with_data() {
+         invoiceItemList = new ArrayList<>();
+         invoiceItemList.clear();
+@@ -582,9 +583,9 @@
+     //BUTTON SEARCH ONCLICK
+     public void searchProduct() {
+         try {
+-            code = Integer.parseInt(txt_search.getText().toString());
+-            final String[] itemcode = {Integer.toString(code)};
+-            itemCode123.add(Integer.toString(code));
++            code = Long.parseLong(txt_search.getText().toString());
++            final String[] itemcode = {Long.toString(code)};
++            itemCode123.add(Long.toString(code));
+             String[] WHERE = {COLUMN_PRODUCT_ID, COLUMN_PRODUCT_NAME, COLUMN_PRODUCT_DESCRIPTION,COLUMN_PRODUCT_QUANTITY, COLUMN_PRODUCT_PRICE};
+             cursor = dbReader.query(TABLE_PRODUCT, WHERE, COLUMN_PRODUCT_ID+ " LIKE ?", itemcode, null, null, null);
+             cursor.moveToFirst();
+@@ -653,7 +654,7 @@
+                                     //MARK'S SOLUTION FOR TEMPORARY INVOICING ITEMS
+                                     //INSERT TEMP INVOICE ITEMS INTO TABLE
+                                     try {
+-                                        String convertedCode = Integer.toString(code).trim();
++                                        String convertedCode = Long.toString(code).trim();
+                                         int result = db_data.searchDuplicateInvoice(convertedCode);
+                                         if(result > 0){
+                                             SQLiteDatabase db = db_data.getReadableDatabase();
+@@ -775,7 +776,7 @@
+             products.add("\n");
+ 
+             //CHECK IF PRINTERS ARE OPEN
+-            boolean ret = marksPrinter.Open();
++//            boolean ret = marksPrinter.Open();
+ 
+             String[] printBaKamo = products.toArray(new String[products.size()]);
+             String printBaHanapMo="";
+@@ -786,21 +787,27 @@
+ 
+ 
+             double doubleCustomerCash = Double.parseDouble(customerCash);
+-                if(ret) {
++
++                                if(invoiceItemList !=null && doubleCustomerCash >= due){
++                                    printFunction(products);
++                                    btn_print.setEnabled(false);
++                                    products.clear();
++                                }
++//                if(ret) {
+ //                    mSerialPrinter.sydneyDotMatrix7by7();
+ //                    mSerialPrinter.printString(products);
+ //                    mSerialPrinter.walkPaper(50);
+ //                    mSerialPrinter.sendLineFeed();
+                     //JOLLICARL PRINTER
+ 
+-                }
+-                else if( invoiceItemList != null & doubleCustomerCash >= due ) {
+-                    //JOLLIMARK PRINTER
+-                    unLockCashBox();
+-                    printFunction(products);
+-                    btn_print.setEnabled(false);
+-                    products.clear();
+-                }
++//                }
++//                else if( invoiceItemList != null & doubleCustomerCash >= due ) {
++//                    //JOLLIMARK PRINTER
++//                    unLockCashBox();
++//                    printFunction(products);
++//                    btn_print.setEnabled(false);
++//                    products.clear();
++//                }
+             t2Rows.clear();
+             products.clear();
+ 
+@@ -826,23 +833,25 @@
+         }
+         String convertedArray = sb.toString();
+ 
+-        byte[] SData;
+-        try {
+-            SData = convertedArray.getBytes("UTF-8");
+-            boolean retnVale = mPrinter.PrintText(SData);
+-            db_data.deleteAllTempItemInvoice(); //DELETE ALL TEMP ITEMS
+-            refreshRecyclerView();
++                    db_data.deleteAllTempItemInvoice(); //DELETE ALL TEMP ITEMS
++                    refreshRecyclerView();
+-
+-            if(!retnVale){
+-                Toast.makeText(Cashier.this, mPrinter.GetLastPrintErr() , Toast.LENGTH_SHORT).show();
++//        byte[] SData;
++//        try {
++//            SData = convertedArray.getBytes("UTF-8");
++//            boolean retnVale = mPrinter.PrintText(SData);
++//            db_data.deleteAllTempItemInvoice(); //DELETE ALL TEMP ITEMS
++//            refreshRecyclerView();
++//
++//            if(!retnVale){
++//                Toast.makeText(Cashier.this, mPrinter.GetLastPrintErr() , Toast.LENGTH_SHORT).show();
++//            }
++//        } catch (UnsupportedEncodingException e) {
++//
++//            e.printStackTrace();
++//
++//        }
+-            }
++    }
+-        } catch (UnsupportedEncodingException e) {
+ 
+-            e.printStackTrace();
+-
+-        }
+-    }
+-
+     @Override
+     public boolean onCreateOptionsMenu(Menu menu){
+         MenuInflater menuInflater = getMenuInflater();
+@@ -931,9 +940,21 @@
+     }
+ 
+     public void xreport(View view){
++        createMyDialog();
++        //CREATE DIALOG Z
++        whatButton = "x";
++        alertDialogXreport = builder.create();
++        alertDialogZreport = builder.create();
++        alertDialogCredit = builder.create();
+         alertDialogXreport.show();
+     }
+     public void zreport(View view){
++        createMyDialog();
++        //CREATE DIALOG Z
++        whatButton = "z";
++        alertDialogXreport = builder.create();
++        alertDialogZreport = builder.create();
++        alertDialogCredit = builder.create();
+         alertDialogZreport.show();
+     }
+ 
+@@ -1052,7 +1073,7 @@
+             }
+             //RUN CODE IF JOLLIMARK IS PRESENT
+             try {
+-                marksPrinter.Open(); //open the printer
++//                marksPrinter.Open(); //open the printer
+             } catch (Exception e) {
+ 
+             }
+@@ -1065,7 +1086,7 @@
+         //REFRESHING THE RECYCLER
+         invoiceItemList = fill_with_data();
+         InvoiceAdapter invoiceAdapter = new InvoiceAdapter(getApplication(), invoiceItemList);
+-        mLayoutManager = new GridLayoutManager(Cashier.this,2);
++        mLayoutManager = new GridLayoutManager(Cashier.this,1);
+         recyclerView.setLayoutManager(mLayoutManager);
+         recyclerView.setItemAnimator(new DefaultItemAnimator());
+         recyclerView.setAdapter(invoiceAdapter);
+Index: app/src/main/java/com/example/sydney/psov3/DB_Data.java
+===================================================================
+--- app/src/main/java/com/example/sydney/psov3/DB_Data.java	(date 1500346611000)
++++ app/src/main/java/com/example/sydney/psov3/DB_Data.java	(date 1500448342000)
+@@ -581,15 +581,17 @@
+     }
+     int pleaseGiveMeTheZCount(){
+         int z;
+-        String[] columns = {"COUNT("+COLUMN_INVOICE_VATTED+")"};
+-        Cursor cursor = dbr.query(TABLE_TRANSACTION,columns,null,null,null,null,null,null);
++        String[] columns = {"COUNT(*)"};
++        String mWHERE = COLUMN_TRANSACTION_TYPE+" = ?";
++        String[] mWHERE_ARGS = new String[]{"zreport"};
++        Cursor cursor = dbr.query(TABLE_TRANSACTION,columns,mWHERE,mWHERE_ARGS,null,null,null,null);
+         cursor.moveToFirst();
+         z = cursor.getInt(0);
+         cursor.close();
+         return z;
+     }
+     int[] pleaseGiveMeTheFirstAndLastOfTheTransactions(){
+-        int[] t = new int[1];
++        int[] t = new int[2];
+         String[] columns = {_ID};
+         String mWHERE = COLUMN_TRANSACTION_ZREPORT+" = ?";
+         String[] mWHERE_ARGS = new String[]{"0"};
+@@ -603,7 +605,7 @@
+     }
+ 
+     int[] pleaseGiveMeTheFirstAndLastOfTheOfficialReceipt(){
+-        int[] t = new int[1];
++        int[] t = new int[2];
+         String[] columns = {_ID};
+         String mWHERE = COLUMN_INVOICE_ZREPORT_STATUS+" = ?";
+         String[] mWHERE_ARGS = new String[]{"0"};
+\ No newline at end of file
+Index: app/src/main/java/com/example/sydney/psov3/ManageProduct.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/java/com/example/sydney/psov3/ManageProduct.java	(date 1500346611000)
++++ app/src/main/java/com/example/sydney/psov3/ManageProduct.java	(date 1500448342000)
+@@ -70,8 +70,8 @@
+         //INITIALIZE DATA SET
+         productsList = listGo();
+         productAdapter = new ProductAdapter(getApplication(),productsList);
+-        recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+-        recyclerView.setLayoutManager(new GridLayoutManager(this,3,GridLayoutManager.VERTICAL,false));
++        recyclerView = (RecyclerView) findViewById(R.id.recycler_view_product);
++        recyclerView.setLayoutManager(new GridLayoutManager(this,1,GridLayoutManager.VERTICAL,false));
+         recyclerView.setItemAnimator(new DefaultItemAnimator());
+         recyclerView.setAdapter(productAdapter);//recyclerView.setItemAnimator(new DefaultItemAnimator());
+ 
+@@ -182,7 +182,7 @@
+         if(searchView.getQuery().toString().trim().toLowerCase().equals("")){
+             productsList = listGo();
+             productAdapter = new ProductAdapter(getApplication(),productsList);
+-            recyclerView.setLayoutManager(new GridLayoutManager(this,3,GridLayoutManager.VERTICAL,false));
++            recyclerView.setLayoutManager(new GridLayoutManager(this,1,GridLayoutManager.VERTICAL,false));
+             recyclerView.setItemAnimator(new DefaultItemAnimator());
+             recyclerView.setAdapter(productAdapter);
+ 
+@@ -270,7 +270,7 @@
+                     if(spinnerSelected == 0 || spinnerSelected == 1 || spinnerSelected == 2 || spinnerSelected == 3 || spinnerSelected == 4 && searchView.getQuery().toString().trim().toLowerCase().equals("")){
+                         productsList = listGo();
+                         productAdapter = new ProductAdapter(getApplication(),productsList);
+-                        recyclerView.setLayoutManager(new GridLayoutManager(getApplication(),3,GridLayoutManager.VERTICAL,false));
++                        recyclerView.setLayoutManager(new GridLayoutManager(getApplication(),1,GridLayoutManager.VERTICAL,false));
+                         recyclerView.setItemAnimator(new DefaultItemAnimator());
+                         recyclerView.setAdapter(productAdapter);
+                     }
+@@ -393,8 +393,8 @@
+                             //INITIALIZE DATA SET
+                             productsList = listGo();
+                             productAdapter = new ProductAdapter(getApplication(),productsList);
+-                            recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+-                            recyclerView.setLayoutManager(new GridLayoutManager(this,3,GridLayoutManager.VERTICAL,false));
++                            recyclerView = (RecyclerView) findViewById(R.id.recycler_view_product);
++                            recyclerView.setLayoutManager(new GridLayoutManager(this,1,GridLayoutManager.VERTICAL,false));
+                             recyclerView.setItemAnimator(new DefaultItemAnimator());
+                             recyclerView.setAdapter(productAdapter);//recyclerView.setItemAnimator(new DefaultItemAnimator());
+ 
+\ No newline at end of file
+Index: app/src/main/java/com/example/sydney/psov3/ReportBaKamo.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/java/com/example/sydney/psov3/ReportBaKamo.java	(date 1500346611000)
++++ app/src/main/java/com/example/sydney/psov3/ReportBaKamo.java	(date 1500448342000)
+@@ -92,21 +92,21 @@
+             toBePrinted.add("NEW GT\tXXX-XXXXXXXXXXXX.XX\n");
+ 
+             int z = db_data.pleaseGiveMeTheZCount();
+-            String zf = String.format("%$05d", z);
++            String zf = String.format("%1$05d", z);
+             toBePrinted.add("Z Count\t\t"+zf+"\n");
+ 
+             int transArray[] = new int[1];
+             transArray = db_data.pleaseGiveMeTheFirstAndLastOfTheTransactions();
+-            String t1 = String.format("%$06d", transArray[0]);
+-            String t2 = String.format("%$06d", transArray[1]);
++            String t1 = String.format("%1$06d", transArray[0]);
++            String t2 = String.format("%1$06d", transArray[1]);
+             toBePrinted.add("Trans #\t\t"+t1+" - "+t2);
+             int t3 = transArray[1] - transArray[0];
+             toBePrinted.add("\t\t\t"+t3+"\n");
+ 
+             int or[];
+             or = db_data.pleaseGiveMeTheFirstAndLastOfTheOfficialReceipt();
+-            String or1 = String.format("%$06d", or[0]);
+-            String or2 = String.format("%$06d", or[1]);
++            String or1 = String.format("%1$06d", or[0]);
++            String or2 = String.format("%1$06d", or[1]);
+             toBePrinted.add("OR #\t\t"+or1+ " - "+or2);
+             int or3 = or[1] - or[0];
+             toBePrinted.add("\t\t\t"+or3+"\n");
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_admin_manage_product.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/layout/activity_admin_manage_product.xml	(date 1500346611000)
++++ app/src/main/res/layout/activity_admin_manage_product.xml	(date 1500448342000)
+@@ -7,12 +7,11 @@
+     android:gravity="center_vertical">
+ 
+     <com.google.android.flexbox.FlexboxLayout
+-        android:padding="30dp"
+         xmlns:android="http://schemas.android.com/apk/res/android"
+         xmlns:app="http://schemas.android.com/apk/res-auto"
+         android:id="@+id/flex"
+         android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
++        android:layout_height="match_parent"
+         app:alignItems="center"
+         app:flexWrap="wrap"
+         app:flexDirection="row"
+@@ -44,23 +43,25 @@
+ 
+         </LinearLayout>
+ 
+-    </com.google.android.flexbox.FlexboxLayout>
+-
+-
+-    <LinearLayout
+-        android:background="@color/myColorBGforRecyclerView"
+-        android:layout_width="match_parent"
++        <LinearLayout
++            android:background="@color/myColorBGforRecyclerView"
++            android:layout_width="match_parent"
+-        android:layout_height="match_parent">
++            android:layout_height="match_parent"
++            app:layout_flexBasisPercent="@fraction/fraction100percent">
+ 
+-        <android.support.v7.widget.RecyclerView
++            <android.support.v7.widget.RecyclerView
+-            android:id="@+id/recycler_view"
++                android:id="@+id/recycler_view_product"
+-            android:layout_width="match_parent"
++                android:layout_width="match_parent"
+-            android:layout_height="match_parent"
++                android:layout_height="wrap_content"
+-            android:clipChildren="false"
+-            android:scrollbars="vertical">
++                android:clipChildren="false"
++                android:scrollbars="vertical">
+-
+-        </android.support.v7.widget.RecyclerView>
+-    </LinearLayout>
++            </android.support.v7.widget.RecyclerView>
++        </LinearLayout>
++
++    </com.google.android.flexbox.FlexboxLayout>
++
++
++
+ 
+ 
+ </LinearLayout>
+\ No newline at end of file
+Index: app/src/main/res/layout/fragment_cashier_invoice.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/layout/fragment_cashier_invoice.xml	(date 1500346611000)
++++ app/src/main/res/layout/fragment_cashier_invoice.xml	(date 1500448342000)
+@@ -53,12 +53,11 @@
+     </RelativeLayout>
+ 
+     <android.support.v7.widget.RecyclerView
+-        android:padding="10dp"
+-        android:layout_marginTop="10dp"
+         android:id="@+id/recycler_view_invoice"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
++        android:layout_marginTop="10dp"
+         android:clipChildren="false"
+-        android:scrollbars="vertical">
+-    </android.support.v7.widget.RecyclerView>
++        android:padding="10dp"
++        android:scrollbars="vertical"></android.support.v7.widget.RecyclerView>
+ </LinearLayout>
+\ No newline at end of file
+Index: app/src/main/res/layout/fragment_cashier_payment.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/layout/fragment_cashier_payment.xml	(date 1500346611000)
++++ app/src/main/res/layout/fragment_cashier_payment.xml	(date 1500448342000)
+@@ -64,20 +64,20 @@
+                 android:layout_height="wrap_content"
+                 android:orientation="vertical">
+ 
+-                <LinearLayout
+-                    android:layout_width="match_parent"
+-                    android:layout_height="wrap_content"
+-                    android:layout_weight="1"
+-                    android:orientation="horizontal">
++                <!--<LinearLayout-->
++                    <!--android:layout_width="match_parent"-->
++                    <!--android:layout_height="wrap_content"-->
++                    <!--android:layout_weight="1"-->
++                    <!--android:orientation="horizontal">-->
+ 
+-                    <Button
+-                        android:layout_marginLeft="5dp"
+-                        android:background="@drawable/custom_button_payment_mode"
+-                        android:id="@+id/btnCredit"
+-                        android:layout_width="wrap_content"
+-                        android:layout_height="80dp"
+-                        android:layout_weight=".3"
+-                        android:text="Credit Card" />
++                    <!--<Button-->
++                        <!--android:layout_marginLeft="5dp"-->
++                        <!--android:background="@drawable/custom_button_payment_mode"-->
++                        <!--android:id="@+id/btnCredit"-->
++                        <!--android:layout_width="wrap_content"-->
++                        <!--android:layout_height="80dp"-->
++                        <!--android:layout_weight=".3"-->
++                        <!--android:text="Credit Card" />-->
+ 
+                     <!--<Button-->
+                         <!--android:layout_marginLeft="5dp"-->
+@@ -98,14 +98,14 @@
+                         <!--android:text="Other" />-->
+ 
+ 
+-                </LinearLayout>
++                <!--</LinearLayout>-->
+ 
+                 <RadioGroup
+                     android:gravity="center"
+                     android:id="@+id/rg_discount"
+                     android:layout_width="match_parent"
+                     android:layout_height="match_parent"
+-                    android:layout_marginTop="20dp"
++                    android:layout_marginTop="0dp"
+                     android:orientation="horizontal"
+                     android:padding="3dp">
+ 
+@@ -138,7 +138,7 @@
+                 android:id="@+id/btn_printBaKamo"
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+-                android:layout_marginTop="20dp"
++                android:layout_marginTop="5dp"
+                 android:background="@drawable/custom_button_login"
+                 android:elevation="4dp"
+                 android:onClick="print"
+@@ -146,34 +146,9 @@
+                 android:textColor="@color/myColorWhite"
+                 android:textSize="20dp"
+                 android:textStyle="bold" />
+-        </LinearLayout>
+-    </android.support.v7.widget.CardView>
+ 
+-
+-
+-
+-
+-
+-
+-
+-    <android.support.v7.widget.CardView
+-        android:elevation="2dp"
+-        android:id="@+id/ofay"
+-        app:layout_flexBasisPercent="@fraction/fraction100percent"
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content">
+-
+-        <LinearLayout
+-            android:paddingTop="10dp"
+-            android:padding="10dp"
+-            android:layout_gravity="center_vertical"
+-            android:paddingRight="10dp"
+-            android:paddingLeft="10dp"
+-            android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
+-            android:orientation="vertical">
+-
+             <TextView
++                android:layout_marginTop="10dp"
+                 android:textAlignment="center"
+                 android:textColor="@color/myColorHeading"
+                 android:layout_width="match_parent"
+@@ -341,6 +316,33 @@
+                     android:textSize="30sp"
+                     android:textStyle="bold" />
+             </LinearLayout>
++        </LinearLayout>
++    </android.support.v7.widget.CardView>
++
++
++
++
++
++
++
++
++    <android.support.v7.widget.CardView
++        android:elevation="2dp"
++        android:id="@+id/ofay"
++        app:layout_flexBasisPercent="@fraction/fraction100percent"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content">
++
++        <LinearLayout
++            android:padding="1dp"
++            android:layout_gravity="center_vertical"
++            android:paddingRight="10dp"
++            android:paddingLeft="10dp"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical">
++
++
+         </LinearLayout>
+     </android.support.v7.widget.CardView>
+ 
+Index: app/src/main/res/layout-land/activity_admin_manage_product.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/layout-land/activity_admin_manage_product.xml	(date 1500346611000)
++++ app/src/main/res/layout-land/activity_admin_manage_product.xml	(date 1500448342000)
+@@ -51,13 +51,11 @@
+             app:layout_flexBasisPercent="@fraction/fraction100percent">
+ 
+             <android.support.v7.widget.RecyclerView
+-                app:spanCount="3"
+-                android:id="@+id/recycler_view"
++                android:id="@+id/recycler_view_product"
+                 android:layout_width="match_parent"
+                 android:layout_height="match_parent"
+                 android:clipChildren="false"
+                 android:scrollbars="vertical">
+-
+             </android.support.v7.widget.RecyclerView>
+         </LinearLayout>
+ 
+\ No newline at end of file
+Index: app/src/main/res/layout-land/invoice_item_card.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/layout-land/invoice_item_card.xml	(date 1500346611000)
++++ app/src/main/res/layout-land/invoice_item_card.xml	(date 1500448342000)
+@@ -1,60 +1,71 @@
+ <?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:card_view="http://schemas.android.com/apk/res-auto"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:paddingRight="4dp"
++    android:paddingLeft="4dp">
++
+-<android.support.v7.widget.CardView
++    <android.support.v7.widget.CardView
++        android:layout_margin="2dp"
+-    android:id="@+id/cv_item"
+-    android:clickable="true"
+-    android:layout_width="match_parent"
+-    android:layout_height="wrap_content"
++        android:id="@+id/cv_item"
++        android:clickable="true"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
+-    xmlns:android="http://schemas.android.com/apk/res/android">
++        xmlns:android="http://schemas.android.com/apk/res/android"
++        android:paddingTop="5dp">
+ 
+-    <RelativeLayout
+-        android:id="@+id/relativeLayout"
+-        android:layout_width="match_parent"
+-        android:layout_height="match_parent"
+-        android:orientation="vertical">
++        <RelativeLayout
++            android:id="@+id/relativeLayout"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:orientation="vertical">
+ 
+-        <TextView
+-            android:id="@+id/txtInvoiceProductName"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:padding="8dp"
+-            android:text="Milo 20g"
+-            android:textSize="16dp" />
++            <TextView
++                android:id="@+id/txtInvoiceProductName"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:padding="8dp"
++                android:text="Milo 20g"
++                android:textSize="16dp" />
+ 
+-        <CheckBox
+-            android:id="@+id/chk_delete"
+-            android:visibility="invisible"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_alignParentRight="true"
+-            android:padding="10dp"/>
++            <CheckBox
++                android:id="@+id/chk_delete"
++                android:visibility="invisible"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_alignParentRight="true"
++                android:padding="10dp"/>
+ 
+-        <TextView
+-            android:id="@+id/txtInvoiceProductQuantity"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_below="@+id/txtInvoiceProductName"
+-            android:layout_toLeftOf="@+id/txInvoiceProductPrice"
+-            android:padding="8dp"
+-            android:text="x1"
+-            android:textSize="16dp" />
++            <TextView
++                android:id="@+id/txtInvoiceProductQuantity"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_below="@+id/txtInvoiceProductName"
++                android:layout_toLeftOf="@+id/txInvoiceProductPrice"
++                android:padding="8dp"
++                android:text="x1"
++                android:textSize="16dp" />
+ 
+-        <TextView
+-            android:id="@+id/txInvoiceProductPrice"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_toRightOf="@+id/txtInvoiceProductName"
+-            android:padding="10dp"
+-            android:text="P 7.00"
+-            android:textSize="16dp" />
++            <TextView
++                android:id="@+id/txInvoiceProductPrice"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_toRightOf="@+id/txtInvoiceProductName"
++                android:padding="10dp"
++                android:text="P 7.00"
++                android:textSize="16dp" />
+ 
+-        <TextView
+-            android:id="@+id/txtInvoiceProductVattable"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_toRightOf="@+id/txInvoiceProductPrice"
+-            android:padding="10dp"
+-            android:text="V"
+-            android:textSize="16dp" />
++            <TextView
++                android:id="@+id/txtInvoiceProductVattable"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_toRightOf="@+id/txInvoiceProductPrice"
++                android:padding="10dp"
++                android:text="V"
++                android:textSize="16dp" />
+ 
+-    </RelativeLayout>
+-</android.support.v7.widget.CardView>
+\ No newline at end of file
++        </RelativeLayout>
++    </android.support.v7.widget.CardView>
++
++</LinearLayout>
+Index: app/src/main/res/layout-land/product_card.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/layout-land/product_card.xml	(date 1500448342000)
++++ app/src/main/res/layout-land/product_card.xml	(date 1500448342000)
+@@ -0,0 +1,136 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:card_view="http://schemas.android.com/apk/res-auto"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:paddingRight="4dp"
++    android:paddingLeft="4dp">
++
++    <android.support.v7.widget.CardView
++        android:id="@+id/card_view"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:layout_margin="2dp"
++        android:elevation="2dp"
++        card_view:cardCornerRadius="3dp">
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical"
++            android:padding="10dp">
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="match_parent"
++                android:layout_gravity="center"
++                android:orientation="horizontal">
++
++                <TextView
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="Id"
++                    android:textColor="@color/myColorEditTextDialog" />
++
++                <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
++                    android:id="@+id/txtProdId"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_marginLeft="76dp"
++                    android:text="0"
++                    android:textSize="16dp" />
++            </LinearLayout>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="match_parent"
++                android:layout_gravity="center"
++                android:orientation="horizontal">
++
++                <TextView
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="Name"
++                    android:textColor="@color/myColorEditTextDialog" />
++
++                <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
++                    android:layout_marginLeft="50dp"
++                    android:id="@+id/txtProdName"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="SOME NAME"
++                    android:textSize="16dp" />
++            </LinearLayout>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="match_parent"
++                android:layout_gravity="center"
++                android:orientation="horizontal">
++
++                <TextView
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="Description"
++                    android:textColor="@color/myColorEditTextDialog" />
++
++                <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
++                    android:layout_marginLeft="18dp"
++                    android:id="@+id/txtProdDes"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="SOME DES"
++                    android:textSize="14dp" />
++            </LinearLayout>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="match_parent"
++                android:layout_gravity="center"
++                android:orientation="horizontal">
++
++                <TextView
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="Price"
++                    android:textColor="@color/myColorEditTextDialog" />
++
++                <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
++                    android:layout_marginLeft="57dp"
++                    android:id="@+id/txtProdPrice"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="00.00"
++                    android:textSize="14dp" />
++            </LinearLayout>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="match_parent"
++                android:layout_gravity="center"
++                android:orientation="horizontal">
++
++                <TextView
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="Quantity"
++                    android:textColor="@color/myColorEditTextDialog" />
++
++                <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
++                    android:layout_marginLeft="36dp"
++                    android:id="@+id/txtProdQuantity"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="00"
++                    android:textSize="14dp"/>
++            </LinearLayout>
++
++        </LinearLayout>
++
++    </android.support.v7.widget.CardView>
++</LinearLayout>
+\ No newline at end of file
+Index: app/src/main/res/layout-normal-port/invoice_item_card.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/layout-normal-port/invoice_item_card.xml	(date 1500346611000)
++++ app/src/main/res/layout-normal-port/invoice_item_card.xml	(date 1500448342000)
+@@ -1,60 +1,70 @@
+ <?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:card_view="http://schemas.android.com/apk/res-auto"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:paddingRight="4dp"
++    android:paddingLeft="4dp">
++
+-<android.support.v7.widget.CardView
++    <android.support.v7.widget.CardView
++        android:layout_margin="2dp"
+-    android:id="@+id/cv_item"
+-    android:clickable="true"
+-    android:layout_width="match_parent"
+-    android:layout_height="wrap_content"
++        android:id="@+id/cv_item"
++        android:clickable="true"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
+-    xmlns:android="http://schemas.android.com/apk/res/android">
++        xmlns:android="http://schemas.android.com/apk/res/android"
++        android:paddingTop="5dp">
+ 
+-    <RelativeLayout
+-        android:id="@+id/relativeLayout"
+-        android:layout_width="match_parent"
+-        android:layout_height="match_parent"
+-        android:orientation="vertical">
++        <RelativeLayout
++            android:id="@+id/relativeLayout"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:orientation="vertical">
+ 
+-        <TextView
+-            android:id="@+id/txtInvoiceProductName"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:padding="8dp"
+-            android:text="Milo 20g"
+-            android:textSize="16dp"/>
++            <TextView
++                android:id="@+id/txtInvoiceProductName"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:padding="8dp"
++                android:text="Milo 20g"
++                android:textSize="16dp"/>
+ 
+-        <CheckBox
+-            android:id="@+id/chk_delete"
+-            android:visibility="invisible"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_alignParentRight="true"
+-            android:padding="10dp"/>
++            <CheckBox
++                android:id="@+id/chk_delete"
++                android:visibility="invisible"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_alignParentRight="true"
++                android:padding="10dp"/>
+ 
+-        <TextView
+-            android:id="@+id/txtInvoiceProductQuantity"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_below="@+id/txtInvoiceProductName"
+-            android:layout_toLeftOf="@+id/txInvoiceProductPrice"
+-            android:padding="8dp"
+-            android:text="x1"
+-            android:textSize="16dp" />
++            <TextView
++                android:id="@+id/txtInvoiceProductQuantity"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_below="@+id/txtInvoiceProductName"
++                android:layout_toLeftOf="@+id/txInvoiceProductPrice"
++                android:padding="8dp"
++                android:text="x1"
++                android:textSize="16dp" />
+ 
+-        <TextView
+-            android:id="@+id/txInvoiceProductPrice"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_toRightOf="@+id/txtInvoiceProductName"
+-            android:padding="10dp"
+-            android:text="P 7.00"
+-            android:textSize="16dp" />
++            <TextView
++                android:id="@+id/txInvoiceProductPrice"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_toRightOf="@+id/txtInvoiceProductName"
++                android:padding="10dp"
++                android:text="P 7.00"
++                android:textSize="16dp" />
+ 
+-        <TextView
+-            android:id="@+id/txtInvoiceProductVattable"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_toRightOf="@+id/txInvoiceProductPrice"
+-            android:padding="10dp"
+-            android:text="V"
+-            android:textSize="16dp" />
++            <TextView
++                android:id="@+id/txtInvoiceProductVattable"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_toRightOf="@+id/txInvoiceProductPrice"
++                android:padding="10dp"
++                android:text="V"
++                android:textSize="16dp" />
+ 
+-    </RelativeLayout>
+-</android.support.v7.widget.CardView>
+\ No newline at end of file
++        </RelativeLayout>
++    </android.support.v7.widget.CardView>
++</LinearLayout>
+Index: app/src/main/res/layout/product_card.xml
+===================================================================
+--- app/src/main/res/layout/product_card.xml	(date 1500346611000)
++++ app/src/main/res/layout-port/product_card.xml	(date 1500448342000)
+@@ -30,10 +30,11 @@
+                 <TextView
+                     android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+-                    android:text="ID"
++                    android:text="Id"
+                     android:textColor="@color/myColorEditTextDialog" />
+ 
+                 <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
+                     android:id="@+id/txtProdId"
+                     android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+@@ -51,10 +52,11 @@
+                 <TextView
+                     android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+-                    android:text="NAME"
++                    android:text="Name"
+                     android:textColor="@color/myColorEditTextDialog" />
+ 
+                 <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
+                     android:layout_marginLeft="50dp"
+                     android:id="@+id/txtProdName"
+                     android:layout_width="wrap_content"
+@@ -76,6 +78,7 @@
+                     android:textColor="@color/myColorEditTextDialog" />
+ 
+                 <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
+                     android:layout_marginLeft="18dp"
+                     android:id="@+id/txtProdDes"
+                     android:layout_width="wrap_content"
+@@ -97,6 +100,7 @@
+                     android:textColor="@color/myColorEditTextDialog" />
+ 
+                 <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
+                     android:layout_marginLeft="57dp"
+                     android:id="@+id/txtProdPrice"
+                     android:layout_width="wrap_content"
+@@ -118,6 +122,7 @@
+                     android:textColor="@color/myColorEditTextDialog" />
+ 
+                 <TextView
++                    android:textColor="@color/myColorEditTextDialogBold"
+                     android:layout_marginLeft="36dp"
+                     android:id="@+id/txtProdQuantity"
+                     android:layout_width="wrap_content"
+\ No newline at end of file
+Index: app/src/main/res/values/colors.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/values/colors.xml	(date 1500346611000)
++++ app/src/main/res/values/colors.xml	(date 1500448342000)
+@@ -16,6 +16,7 @@
+     <color name="myColorIconAdminPriveleges">#ffe1b1</color>
+     <color name="myColorActionBar">#e9291a</color>
+     <color name="myColorEditTextDialog">#a8a8a8</color>
++    <color name="myColorEditTextDialogBold">#939393</color>
+     <color name="myColorBGforRecyclerView">#e6e6e6</color>
+     <color name="myColorEditTextDialogDisable">#7b7b7b</color>
+     <color name="myColorDialogBG">#cacaca</color>
+Index: app/src/main/res/values/strings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/values/strings.xml	(date 1500346611000)
++++ app/src/main/res/values/strings.xml	(date 1500448342000)
+@@ -1,5 +1,5 @@
+ <resources>
+-    <string name="app_name">A-PoSBakamo</string>
++    <string name="app_name">Tinda-POS</string>
+     <string name="cashpass">Staff
+         password</string>
+     <string name="res">Colgate \t \t \t 1 \t \t \t 51.0</string>
